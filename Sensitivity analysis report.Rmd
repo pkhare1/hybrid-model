@@ -1,0 +1,44 @@
+---
+title: "MultiStart parameter sensitivity analysis"
+author: "Pratik A. Khare"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {r, echo = FALSE}
+load("C:/PRATIK/PhD/Mike Betenbaugh/Hybrid model project/Manuscript/Review/R1 MjC2.3/Multiple initial start sensitivity analysis/KOM and SOM sensitivity analysis outputs.RData")
+```
+
+## Fval (objective value) comparison between KOM and SOM
+
+First, we will just see the distribution of the fval for the KOM and SOM side-by-side via a boxplot:
+
+```{r, echo=FALSE}
+plot1 <- boxplot(
+     as.numeric(MultiStart_KOM_output$fval),as.numeric(MultiStart_SOM_output$fval),
+     ylab="Fval",
+     main="Spread of objective function values for KOM and SOM",
+     names = c("KOM", "SOM"),
+     col = c("darkgreen", "orange"),
+     border = c("black", "black"))
+```
+
+As seen in the boxplot, the KOM and SOM have distinctly different fval values.  
+&rarr; The range for KOM fvals is `r range(MultiStart_KOM_output$fval)`  
+&rarr; The range for SOM fvals is `r range(MultiStart_SOM_output$fval)`  
+
+The difference between the fvals for the KOM and SOM is significant, as seen by the p-value: `r t.test(MultiStart_KOM_output$fval, MultiStart_SOM_output$fval)$p.value`
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
