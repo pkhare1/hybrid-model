@@ -13,6 +13,11 @@ knitr::opts_chunk$set(echo = TRUE)
 load("C:/PRATIK/PhD/Mike Betenbaugh/Hybrid model project/Manuscript/Review/R1 MjC2.3/Multiple initial start sensitivity analysis/KOM and SOM sensitivity analysis outputs.RData")
 ```
 
+## A brief note on the data used in this document
+
+&diams; MultiStart_KOM_output and MultiStart_SOM_output are structures containing the final parameter values, fval, and initial guesses for each of the 20 MultiStart iterations, organized sequentially by the order in which initial guesses were generated.  
+&diams; Params_KOM_final and Params_SOM_final are vectors (45x1) of the final parameters generated in the code described in the manuscript.
+
 ## Fval (objective value) comparison between KOM and SOM
 
 First, we will just see the distribution of the fval for the KOM and SOM side-by-side via a boxplot:
@@ -22,23 +27,92 @@ plot1 <- boxplot(
      as.numeric(MultiStart_KOM_output$fval),as.numeric(MultiStart_SOM_output$fval),
      ylab="Fval",
      main="Spread of objective function values for KOM and SOM",
+     sub = "Red arrows indicate the fval or error of the fits shown in the manuscript",
      names = c("KOM", "SOM"),
      col = c("darkgreen", "orange"),
      border = c("black", "black"))
+
+xpos <- 1:length(plot1$names)
+
+arrows(xpos[2]-0.6, 53.28,
+        xpos[2]-0.4, 53.28,
+        length=0.1, lwd=2,
+        col = "red")
+
+arrows(xpos[1]+0.6, 28.2,
+        xpos[1]+0.4, 28.2,
+        length=0.1, lwd=2,
+        col = "red")
 ```
 
 As seen in the boxplot, the KOM and SOM have distinctly different fval values.  
 &rarr; The range for KOM fvals is `r range(MultiStart_KOM_output$fval)`  
 &rarr; The range for SOM fvals is `r range(MultiStart_SOM_output$fval)`  
 
-The difference between the fvals for the KOM and SOM is significant, as seen by the p-value: `r t.test(MultiStart_KOM_output$fval, MultiStart_SOM_output$fval)$p.value`
+<span style="color: red;">The KOM in the manuscript actually converges to the lowest error when initialized to within +-20% of the original initial guesses!</span>
 
-## Including Plots
+The difference between the fvals for the KOM and SOM is significant, as seen by the p-value: `r t.test(MultiStart_KOM_output$fval, MultiStart_SOM_output$fval)$p.value`  
 
-You can also embed plots, for example:
+We can also see the plots of the fvals for the KOM and SOM as a scatter plot, alongwith where the final fval was dicovered for the simulation described in the paper:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, echo = FALSE}
+par(mfrow = c(1,2))
+plot(sort(as.numeric(MultiStart_KOM_output$fval)),ylab = "KOM_Fval")
+abline(h = 28.2, col = "green", lwd = 2, lty = 2)
+
+plot(sort(as.numeric(MultiStart_SOM_output$fval)),ylab = "SOM_Fval")
+abline(h = 53.28, col = "orange", lwd = 2, lty = 2)
+par(mfrow = c(1,1))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+MultiStart initialization thus reveals strong clustering of objective values near the solution obtained from the original initialization (shown above in colored lines), with multiple independent starts converging to the same low-fval basin. This indicates robustness to initialization and suggests that the identified solution is near-globally optimal within the explored parameter space.
+
+## Euclidean distance between the final parameters for each Multistart iteration and the fianl params in the paper
+
+Next, we will compute the pairwise Euclidean distance between each final parameter value from the 20 MultiStart iterations and the final parameter set that is optimized and used in the paper.
+
+Why do we use Euclidean distance? It is the most common distance measure and is merely the distance between two points. Since the major disadvantage of Euclidean distance—lack of normalization—is not a problem due to the already log-normalized parameters, it makes Euclidean the ideal distance measure.
+
+```{r, echo = FALSE}
+# Getting the order of fvals from ascending to descending
+order_KOM_fval <- order(MultiStart_KOM_output$fval)
+order_SOM_fval <- order(MultiStart_SOM_output$fval)
+# Arranging the final parameters from KOM and SOM simulation in the same order as the corresponding fvals
+Params_KOM_ordered <- MultiStart_KOM_output$finalparams[,order_KOM_fval]
+Params_SOM_ordered <- MultiStart_SOM_output$finalparams[,order_SOM_fval]
+# Initializing distance vectors
+distance_KOM = numeric(20)
+distance_SOM = numeric(20)
+
+# Measure the pairwise Euclidean distance between the ordered parameters and the final KOM/SOM params
+for (i in 1:20) {
+  distance_KOM[i] <- sqrt(sum((Params_KOM_ordered[,i] - Params_KOM_final)^2))
+  distance_SOM[i] <- sqrt(sum((Params_SOM_ordered[,i] - Params_SOM_final)^2))
+}
+# Now plotting the fval-scatter plots and the distance-line plots together:
+par(mfrow = c(1,2))
+
+#KOM plot
+plot(sort(as.numeric(MultiStart_KOM_output$fval)),ylab = "KOM_Fval")
+abline(h = 28.2, col = "green", lwd = 2, lty = 2)
+par(new = TRUE)
+plot(1:20, distance_KOM, type = "l", col = "red", lwd = 1,
+     axes = FALSE, xlab = "", ylab = "")
+axis(side = 4)
+
+#SOM plot
+plot(sort(as.numeric(MultiStart_SOM_output$fval)),ylab = "SOM_Fval")
+abline(h = 53.28, col = "orange", lwd = 2, lty = 2)
+par(new = TRUE)
+plot(1:20, distance_SOM, type = "l", col = "red", lwd = 1,
+     axes = FALSE, xlab = "", ylab = "")
+axis(side = 4)
+```
+
+## The observations are:  
+&diams; KOM: Smaller fvals tend to have parameters closer to the final KOM parameters shown in the paper. There is one outlier though.  
+&diams; SOM: There doesn't seem to be a relationship between the fval and the parameter distances.
+
+## What these observations tell us:  
+&diams; KOM: The found solution (from the paper) seems to be optimal with a single dominant minima in which our solution lies.  
+&diams; SOM: The objective landscape is potentially flat, and there is no set parameter basin that yields low fval and multiple parameters seem to be giving similar fvals. Given that the kinetic parameters are only loosely dictating the fluxes and therefore the concentrations (objective finction), I'd say this is expected. 
